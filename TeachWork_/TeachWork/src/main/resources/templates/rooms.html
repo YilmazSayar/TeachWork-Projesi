@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odalar - TeachWork</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .room-card {
+            transition: all 0.3s ease;
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .room-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .room-code {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .member-count {
+            font-size: 0.9rem;
+            color: #28a745;
+        }
+        .task-card {
+            transition: all 0.3s ease;
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .task-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.5em 1em;
+            border-radius: 20px;
+        }
+        .status-pending {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status-in-progress {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+        .status-completed {
+            background-color: #28a745;
+            color: #fff;
+        }
+        .badge {
+            font-size: 0.8rem;
+            padding: 0.35em 0.65em;
+        }
+        .badge.bg-danger {
+            min-width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .member-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            margin: 0 5px;
+            position: relative;
+            cursor: default;
+        }
+        .member-avatar:hover::after {
+            content: attr(data-user-info);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 5px;
+        }
+        .member-avatar:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.8);
+            margin-bottom: -5px;
+        }
+        .task-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/home">
+                <i class="fas fa-tasks me-2"></i>TeachWork
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">Ana Sayfa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/tasks">Görevler</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/rooms">Odalar</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="/logout" class="btn btn-outline-light">
+                        <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Odalarım</h2>
+            <div>
+                <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#joinRoomModal">
+                    <i class="fas fa-sign-in-alt me-2"></i>Odaya Katıl
+                </button>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal">
+                    <i class="fas fa-plus me-2"></i>Yeni Oda
+                </button>
+            </div>
+        </div>
+
+        <!-- Room List -->
+        <div class="room-list">
+            <div th:each="room : ${rooms}" class="room-card" th:onclick="'showRoomDetail(' + ${room.id} + ')'">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0" th:text="${room.name}">Oda Adı</h5>
+                        <p class="text-muted mb-0" th:text="${room.createdBy.name + ' tarafından oluşturuldu'}">Oluşturan</p>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span th:if="${roomTaskCounts.get(room.id) > 0}" 
+                              class="badge bg-danger rounded-circle ms-2" 
+                              th:text="${roomTaskCounts.get(room.id)}">3</span>
+                        <span class="badge bg-primary ms-2" th:text="${room.code}">KOD</span>
+                        <span class="badge bg-info ms-2">
+                            <i class="fas fa-users me-1"></i>
+                            <span th:text="${room.members.size()}">0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Detail View -->
+        <div id="roomDetail" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 id="roomDetailTitle" class="mb-0">Oda Detayı</h3>
+                <button class="btn btn-outline-primary" onclick="showRoomList()">
+                    <i class="fas fa-arrow-left me-2"></i>Odalara Dön
+                </button>
+            </div>
+            <div id="roomTasks">
+                <!-- Görevler JavaScript ile buraya eklenecek -->
+            </div>
+            <div class="mt-4">
+                <h5 class="mb-3">Oda Üyeleri</h5>
+                <div id="roomMembers" class="d-flex flex-wrap gap-2">
+                    <!-- Üyeler JavaScript ile buraya eklenecek -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div class="modal fade" id="createRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Oda Oluştur</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createRoomForm">
+                        <div class="mb-3">
+                            <label class="form-label">Oda Adı</label>
+                            <input type="text" class="form-control" id="roomName" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="createRoom()">Oda Oluştur</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Join Room Modal -->
+    <div class="modal fade" id="joinRoomModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Odaya Katıl</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="joinRoomForm">
+                        <div class="mb-3">
+                            <label class="form-label">Oda Kodu</label>
+                            <input type="text" class="form-control" id="roomCode" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="joinRoom()">Odaya Katıl</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde odaları getir
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRooms();
+        });
+
+        // Odaları yükle
+        function loadRooms() {
+            fetch('/rooms/my-rooms')
+                .then(response => response.json())
+                .then(rooms => {
+                    const roomList = document.getElementById('roomList');
+                    if (rooms.length === 0) {
+                        roomList.innerHTML = '<div class="col-12"><div class="alert alert-info">Henüz hiç oda bulunmuyor. Yeni bir oda oluşturmak için "Yeni Oda" butonuna tıklayın.</div></div>';
+                        return;
+                    }
+
+                    let html = '';
+                    rooms.forEach(room => {
+                        html += `
+                            <div class="col-md-6 col-lg-4">
+                                <div class="room-card" onclick="showRoomDetail(${room.id}, '${room.name}')">
+                                    <h5 class="mb-2">${room.name}</h5>
+                                    <div class="room-code mb-2">
+                                        <i class="fas fa-key me-1"></i>Kod: ${room.code}
+                                    </div>
+                                    <div class="member-count">
+                                        <i class="fas fa-users me-1"></i>${room.members ? room.members.length : 0} Üye
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    roomList.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Odalar yüklenirken hata oluştu:', error);
+                    document.getElementById('roomList').innerHTML = '<div class="col-12"><div class="alert alert-danger">Odalar yüklenirken bir hata oluştu.</div></div>';
+                });
+        }
+
+        // Oda detayını göster
+        function showRoomDetail(roomId) {
+            document.querySelector('.room-list').style.display = 'none';
+            document.getElementById('roomDetail').style.display = 'block';
+            document.getElementById('roomDetailTitle').setAttribute('data-room-id', roomId);
+            loadRoomTasks(roomId);
+            loadRoomMembers(roomId);
+        }
+
+        // Oda listesini göster
+        function showRoomList() {
+            document.getElementById('roomDetail').style.display = 'none';
+            document.querySelector('.room-list').style.display = 'block';
+        }
+
+        // Oda üyelerini yükle
+        function loadRoomMembers(roomId) {
+            fetch(`/rooms/${roomId}/members`)
+                .then(response => response.json())
+                .then(members => {
+                    const membersContainer = document.getElementById('roomMembers');
+                    let html = '';
+                    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6'];
+                    members.forEach((member, index) => {
+                        const color = colors[index % colors.length];
+                        const initials = member.firstName ? member.firstName.charAt(0).toUpperCase() : 
+                                      (member.name ? member.name.charAt(0).toUpperCase() : '?');
+                        const fullName = member.firstName && member.lastName ? 
+                                       `${member.firstName} ${member.lastName}` : 
+                                       member.name;
+                        html += `
+                            <div class="member-avatar" 
+                                 style="background-color: ${color}"
+                                 data-user-info="${fullName} (${member.email})">
+                                ${initials}
+                            </div>
+                        `;
+                    });
+                    membersContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Üyeler yüklenirken hata oluştu:', error);
+                });
+        }
+
+        // Kullanıcı profilini göster
+        function showUserProfile(userId) {
+            // TODO: Kullanıcı profil sayfasına yönlendir
+            window.location.href = `/users/${userId}`;
+        }
+
+        // Oda görevlerini yükle
+        function loadRoomTasks(roomId) {
+            fetch(`/rooms/${roomId}/tasks`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(tasks => {
+                    const taskList = document.getElementById('roomTasks');
+                    if (!tasks || tasks.length === 0) {
+                        taskList.innerHTML = '<div class="alert alert-info">Bu odada henüz görev bulunmuyor.</div>';
+                        return;
+                    }
+
+                    let html = '';
+                    tasks.forEach(task => {
+                        html += `
+                            <div class="task-card">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="mb-0">${task.title}</h5>
+                                    <span class="status-badge status-${task.status.toLowerCase()}">${task.status}</span>
+                                </div>
+                                <p class="text-muted mb-3">${task.description || ''}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="text-muted small">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        ${new Date(task.dueDate).toLocaleDateString('tr-TR', {day: 'numeric', month: 'long', year: 'numeric'})}
+                                    </div>
+                                    <div>
+                                        ${task.status !== 'COMPLETED' ? `
+                                            <button class="btn btn-success btn-sm me-2" onclick="updateTaskStatus(${task.id}, 'COMPLETED')">
+                                                <i class="fas fa-check me-1"></i>Tamamla
+                                            </button>
+                                        ` : ''}
+                                        ${task.status !== 'IN_PROGRESS' ? `
+                                            <button class="btn btn-primary btn-sm me-2" onclick="updateTaskStatus(${task.id}, 'IN_PROGRESS')">
+                                                <i class="fas fa-play me-1"></i>Başlat
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    taskList.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Görevler yüklenirken hata oluştu:', error);
+                    document.getElementById('roomTasks').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5 class="alert-heading">Görevler yüklenirken bir hata oluştu!</h5>
+                            <p class="mb-0">Hata detayı: ${error.message}</p>
+                        </div>`;
+                });
+        }
+
+        // Yeni oda oluştur
+        function createRoom() {
+            const roomName = document.getElementById('roomName').value;
+            if (!roomName) {
+                alert('Lütfen oda adını giriniz.');
+                return;
+            }
+
+            fetch('/rooms/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: roomName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createRoomModal'));
+                modal.hide();
+                document.getElementById('createRoomForm').reset();
+                loadRooms();
+            })
+            .catch(error => {
+                console.error('Oda oluşturulurken hata oluştu:', error);
+                alert('Oda oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+            });
+        }
+
+        // Odaya katıl
+        function joinRoom() {
+            const roomCode = document.getElementById('roomCode').value;
+            if (!roomCode) {
+                alert('Lütfen oda kodunu giriniz.');
+                return;
+            }
+
+            fetch('/rooms/join', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: roomCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('joinRoomModal'));
+                modal.hide();
+                document.getElementById('joinRoomForm').reset();
+                loadRooms();
+            })
+            .catch(error => {
+                console.error('Odaya katılırken hata oluştu:', error);
+                alert('Odaya katılırken bir hata oluştu. Lütfen tekrar deneyin.');
+            });
+        }
+
+        // Görev durumunu güncelle
+        function updateTaskStatus(taskId, status) {
+            fetch(`/tasks/${taskId}/status?status=${status}`, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Görev durumu güncellenirken bir hata oluştu');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Mevcut oda detayını yeniden yükle
+                const roomId = document.getElementById('roomDetailTitle').getAttribute('data-room-id');
+                loadRoomTasks(roomId);
+            })
+            .catch(error => {
+                console.error('Görev durumu güncellenirken hata oluştu:', error);
+                alert('Görev durumu güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
+            });
+        }
+    </script>
+</body>
+</html> 

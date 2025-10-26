@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Görevler - TeachWork</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .task-card {
+            transition: all 0.3s ease;
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .task-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .task-card.completed {
+            background-color: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid #28a745;
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.5em 1em;
+            border-radius: 20px;
+        }
+        .status-pending {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status-in-progress {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+        .status-completed {
+            background-color: #28a745;
+            color: #fff;
+        }
+        .task-actions {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .task-card:hover .task-actions {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/home">
+                <i class="fas fa-tasks me-2"></i>TeachWork
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/home">Ana Sayfa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/tasks">Görevler</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/rooms">Odalar</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="/logout" class="btn btn-outline-light">
+                        <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Görevlerim</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                <i class="fas fa-plus me-2"></i>Yeni Görev
+            </button>
+        </div>
+
+        <!-- Task Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <select class="form-select" id="statusFilter">
+                            <option value="ALL">Tüm Durumlar</option>
+                            <option value="PENDING">Bekleyen</option>
+                            <option value="IN_PROGRESS">Devam Eden</option>
+                            <option value="COMPLETED">Tamamlanan</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="date" class="form-control" id="dateFilter" placeholder="Tarih">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="searchFilter" placeholder="Görev Ara...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task List -->
+        <div id="taskList">
+            <div class="alert alert-info" id="noTasksMessage" style="display: none;">
+                Henüz hiç görev bulunmuyor. Yeni bir görev eklemek için "Yeni Görev" butonuna tıklayın.
+            </div>
+            <div id="tasksContainer"></div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Görev Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTaskForm">
+                        <div class="mb-3">
+                            <label class="form-label">Görev Başlığı</label>
+                            <input type="text" class="form-control" id="taskTitle" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Açıklama</label>
+                            <textarea class="form-control" id="taskDescription" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Öncelik</label>
+                            <select class="form-select" id="taskPriority">
+                                <option value="LOW">Düşük</option>
+                                <option value="MEDIUM">Orta</option>
+                                <option value="HIGH">Yüksek</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Bitiş Tarihi</label>
+                            <input type="date" class="form-control" id="taskDueDate">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Oda Seçin</label>
+                            <select class="form-select" id="taskRoom" onchange="loadRoomUsers()">
+                                <option value="">Oda Seçin</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="assignedTo" class="form-label">Atanacak Kullanıcı</label>
+                            <select class="form-select" id="assignedTo" disabled>
+                                <option value="">Önce Oda Seçin</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dosya Ekle (PDF)</label>
+                            <input type="file" class="form-control" id="taskFile" accept=".pdf">
+                            <small class="text-muted">Maksimum dosya boyutu: 10MB</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="addTask()">Görev Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div class="modal fade" id="analysisModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">PDF Analiz Sonuçları</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="analysisResults" class="list-group">
+                        <!-- Analiz sonuçları buraya eklenecek -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde görevleri ve odaları getir
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTasks();
+            loadRooms();
+        });
+
+        // Görev silme fonksiyonu
+        function deleteTask(taskId) {
+            if (confirm('Bu görevi silmek istediğinizden emin misiniz?')) {
+                fetch(`/tasks/${taskId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Görev başarıyla silindi, sayfayı yenile
+                        window.location.reload();
+                    } else {
+                        throw new Error('Görev silinirken bir hata oluştu');
+                    }
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    alert('Görev silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+                });
+            }
+        }
+
+        // Odaları yükle
+        function loadRooms() {
+            fetch('/rooms/my-rooms')
+                .then(response => response.json())
+                .then(rooms => {
+                    const roomSelect = document.getElementById('taskRoom');
+                    roomSelect.innerHTML = '<option value="">Oda Seçin</option>';
+                    rooms.forEach(room => {
+                        const option = document.createElement('option');
+                        option.value = room.id;
+                        option.textContent = `${room.name} (${room.code})`;
+                        roomSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Odalar yüklenirken hata oluştu:', error);
+                    const roomSelect = document.getElementById('taskRoom');
+                    roomSelect.innerHTML = '<option value="">Odalar yüklenemedi</option>';
+                });
+        }
+
+        // Seçilen odadaki kullanıcıları yükle
+        function loadRoomUsers() {
+            const roomId = document.getElementById('taskRoom').value;
+            const userSelect = document.getElementById('assignedTo');
+            
+            if (!roomId) {
+                userSelect.innerHTML = '<option value="">Önce Oda Seçin</option>';
+                userSelect.disabled = true;
+                return;
+            }
+
+            fetch(`/rooms/${roomId}/members`)
+                .then(response => response.json())
+                .then(users => {
+                    userSelect.innerHTML = '<option value="">Kullanıcı Seçin</option>';
+                    users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.email;
+                        userSelect.appendChild(option);
+                    });
+                    userSelect.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Kullanıcılar yüklenirken hata oluştu:', error);
+                    userSelect.innerHTML = '<option value="">Kullanıcılar yüklenemedi</option>';
+                    userSelect.disabled = true;
+                });
+        }
+
+        // Görevleri yükle
+        function loadTasks() {
+            fetch('/tasks/list')
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(text || 'Görevler yüklenirken bir hata oluştu');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(tasks => {
+                    const taskList = document.getElementById('taskList');
+                    const noTasksMessage = document.getElementById('noTasksMessage');
+                    const tasksContainer = document.getElementById('tasksContainer');
+
+                    if (!tasks || tasks.length === 0) {
+                        noTasksMessage.style.display = 'block';
+                        tasksContainer.innerHTML = '';
+                        return;
+                    }
+
+                    noTasksMessage.style.display = 'none';
+                    let html = '';
+                    tasks.forEach(task => {
+                        html += createTaskCard(task);
+                    });
+                    tasksContainer.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    document.getElementById('taskList').innerHTML = 
+                        `<div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            ${error.message}
+                        </div>`;
+                });
+        }
+
+        // Yeni görev ekle
+        function addTask() {
+            const taskTitle = document.getElementById('taskTitle').value;
+            const taskDescription = document.getElementById('taskDescription').value;
+            const taskPriority = document.getElementById('taskPriority').value;
+            const taskDueDate = document.getElementById('taskDueDate').value;
+            const roomId = document.getElementById('taskRoom').value;
+            const assignedToId = document.getElementById('assignedTo').value;
+            const taskFile = document.getElementById('taskFile').files[0];
+
+            if (!taskTitle) {
+                alert('Lütfen görev başlığını giriniz.');
+                return;
+            }
+
+            if (!roomId) {
+                alert('Lütfen bir oda seçiniz.');
+                return;
+            }
+
+            if (!assignedToId) {
+                alert('Lütfen görevi atanacak kullanıcıyı seçiniz.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('title', taskTitle);
+            formData.append('description', taskDescription);
+            formData.append('priority', taskPriority);
+            formData.append('dueDate', taskDueDate);
+            formData.append('roomId', roomId);
+            formData.append('assignedToId', assignedToId);
+            if (taskFile) {
+                formData.append('file', taskFile);
+            }
+
+            fetch('/tasks/create', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(text || 'Görev eklenirken bir hata oluştu');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Görev başarıyla eklendi:', data);
+                // Modal'ı kapat
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addTaskModal'));
+                modal.hide();
+                
+                // Formu temizle
+                document.getElementById('addTaskForm').reset();
+                document.getElementById('assignedTo').disabled = true;
+                
+                // Görevleri yeniden yükle
+                loadTasks();
+            })
+            .catch(error => {
+                console.error('Görev eklenirken hata oluştu:', error);
+                alert(error.message || 'Görev eklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+            });
+        }
+
+        // Görev kartı oluşturma kısmını güncelle
+        function createTaskCard(task) {
+            const dueDate = new Date(task.dueDate).toLocaleDateString('tr-TR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+
+            let fileHtml = '';
+            if (task.fileInfo) {
+                fileHtml = `
+                    <div class="mt-2">
+                        <a href="/tasks/download/${task.id}" class="btn btn-sm btn-outline-primary" download="${task.fileInfo.fileName}">
+                            <i class="fas fa-file-pdf me-1"></i>${task.fileInfo.fileName}
+                        </a>
+                        <button class="btn btn-sm btn-outline-info ms-2" onclick="analyzePdf(${task.id})">
+                            <i class="fas fa-robot me-1"></i>PDF'i Analiz Et
+                        </button>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="task-card ${task.status === 'COMPLETED' ? 'completed' : ''}" data-task-id="${task.id}">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="mb-0">${task.title}</h5>
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>Atayan: ${task.assignedBy ? task.assignedBy.email : 'Bilinmiyor'}
+                            </small>
+                        </div>
+                        <span class="status-badge status-${task.status.toLowerCase()}">${task.status}</span>
+                    </div>
+                    <p class="text-muted mb-3">${task.description || ''}</p>
+                    ${fileHtml}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div class="text-muted small">
+                            <i class="fas fa-calendar me-1"></i>${dueDate}
+                        </div>
+                        <div class="task-actions">
+                            ${task.status !== 'COMPLETED' ? `
+                                <button class="btn btn-success btn-sm me-2" disabled>
+                                    <i class="fas fa-check me-1"></i>Tamamla
+                                </button>
+                            ` : ''}
+                            ${task.status !== 'IN_PROGRESS' ? `
+                                <button class="btn btn-primary btn-sm me-2" onclick="updateTaskStatus(${task.id}, 'IN_PROGRESS')">
+                                    <i class="fas fa-play me-1"></i>Başlat
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-danger btn-sm" onclick="deleteTask(${task.id})">
+                                <i class="fas fa-trash me-1"></i>Sil
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Görev durumunu güncelle
+        function updateTaskStatus(taskId, status) {
+            fetch(`/tasks/${taskId}/status?status=${status}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(text || 'Görev durumu güncellenirken bir hata oluştu');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.message) {
+                    // Görev durumu başarıyla güncellendi, listeyi güncelle
+                    loadTasks();
+                } else {
+                    throw new Error('Görev durumu güncellenirken bir hata oluştu');
+                }
+            })
+            .catch(error => {
+                console.error('Hata:', error);
+                alert(error.message || 'Görev durumu güncellenirken bir hata oluştu. Lütfen tekrar deneyin.');
+            });
+        }
+
+        function analyzePdf(taskId) {
+            fetch(`/tasks/analyze/${taskId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(text || 'PDF analizi sırasında bir hata oluştu');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(suggestions => {
+                    const resultsContainer = document.getElementById('analysisResults');
+                    resultsContainer.innerHTML = '';
+                    
+                    if (suggestions.length === 0) {
+                        resultsContainer.innerHTML = `
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                PDF içeriğinde önemli bir nokta bulunamadı.
+                            </div>
+                        `;
+                    } else {
+                        suggestions.forEach(suggestion => {
+                            resultsContainer.innerHTML += `
+                                <div class="list-group-item">
+                                    <i class="fas fa-lightbulb text-warning me-2"></i>
+                                    ${suggestion}
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    // Modal'ı göster
+                    const modal = new bootstrap.Modal(document.getElementById('analysisModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Hata:', error);
+                    alert(error.message || 'PDF analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+                });
+        }
+
+        // Filtreleme işlemleri
+        document.getElementById('statusFilter').addEventListener('change', loadTasks);
+        document.getElementById('dateFilter').addEventListener('change', loadTasks);
+        document.getElementById('searchFilter').addEventListener('input', loadTasks);
+    </script>
+</body>
+</html> 
